@@ -1,0 +1,62 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <!-- 基于配置的方式使用spring Aop 增强-->
+    <!-- 经测试，spring作用在同一目标对象上不同类型的增强，似乎只会调用目标方法一次，优先级是环绕增加>前后增加-->
+    <bean id="springBeforeAdvice" class="com.web.mvc.aop.springAop.SpringBeforeAdvice"/>
+    <bean id="springAfterAdvice" class="com.web.mvc.aop.springAop.SpringAfterAdvice"/>
+    <bean id="springAroundAdvice" class="com.web.mvc.aop.springAop.SpringAroundAdvice"/>
+    <bean id="springThrowsAdvice" class="com.web.mvc.aop.springAop.SpringThrowsAdvice"/>
+    <bean id="forumServiceImpl" class="com.web.mvc.aop.ForumServiceImpl"/>
+    <!-- proxyInterfaces 代理需要实现的接口。可以是list，该属性的一个别名属性叫interfaces-->
+    <!-- proxyTargetClass 设置对类代理，会忽略proxyInterfaces属性 。spring会使用cgLib动态代理 -->
+    <!-- optimize 默认为false,使用jdk的动态代理，反之使用cglib代理，对应singleton代理推荐使用cglib，因为cglib创建代理慢，创建出来的代理对象运行效率高-->
+    <bean id="springProxy" class="org.springframework.aop.framework.ProxyFactoryBean"
+          p:proxyInterfaces="com.web.mvc.aop.ForumService"
+          p:proxyTargetClass="true"
+          p:interceptorNames="springBeforeAdvice,springAfterAdvice,springAroundAdvice,springThrowsAdvice"
+          p:target-ref="forumServiceImpl">
+    </bean>
+
+    <!--配置引介增强-->
+    <!--基于类的增强，必须开启cglib代理。如果没有对引介增强进行线程安全的处理。就必须将singleton设置成false,
+    让ProxyFactoryBean生产prototype作用域的代理，而cglib创建代理的速度非常慢，所有会非常消耗性能。-->
+    <bean id="springIntroductionAdvice" class="com.web.mvc.aop.springAop.SpringIntroductionAdvice"/>
+    <bean id="springIntroductionProxy" class="org.springframework.aop.framework.ProxyFactoryBean"
+          p:interfaces="com.web.mvc.aop.monitor.Monitorable"
+          p:proxyTargetClass="true"
+          p:interceptorNames="springIntroductionAdvice"
+          p:target-ref="forumServiceImpl">
+    </bean>
+
+
+    <!--springAop切面配置 切面=增强+切点。切面分为三类：一般切面(只有增强没有切点)，切点切面(既有增强也有起点)，引介切面(引介增强使用)-->
+    <!--定义切点的方式一：IOC方式注入自定义实现类，类扩展了spring的静态方法名匹配接口-->
+    <bean id="springAfterAdvisor" class="com.web.mvc.aop.springAop.advisor.SpringAfterAdvisor"
+          p:advice-ref="springAfterAdvice"/>
+
+    <!--定义切点的方式二：直接使用spring的正则表达式类匹配-->
+    <bean id="springRegexpAdvisor" class="org.springframework.aop.support.RegexpMethodPointcutAdvisor"
+          p:advice-ref="springAfterAdvice"
+          p:patterns=".*bar.*"/>
+
+    <!--引介切面由两个实现类：DefaultIntroductionAdvisor和DeclareParentsAdvisor(spring2.0新添加的实现类，用于实现AspectJ语言的DeclareParent注解表示的引介切面)-->
+    <!--DefaultIntroductionAdvisor有三个构造器
+        1:DefaultIntroductionAdvisor(Advice advice)通过增强创建切面，引介切面将为目标类新增advice对象中所有接口的实现
+        2:DefaultIntroductionAdvisor(DynamicIntroductionAdvice advice, Class<?> clazz)仅为目标类实现clazz接口的实现
+        3:DefaultIntroductionAdvisor(Advice advice, IntroductionInfo introductionInfo)目标类需要实现的接口由[]introductionInfo.getInterfaces()决定-->
+    <bean id="introductionAdvisor" class="org.springframework.aop.support.DefaultIntroductionAdvisor">
+        <constructor-arg>
+            <bean class="com.web.mvc.aop.springAop.SpringIntroductionAdvice"/>
+        </constructor-arg>
+    </bean>
+
+    <bean id="springAdvisorProxy" class="org.springframework.aop.framework.ProxyFactoryBean"
+          p:interceptorNames="springAfterAdvisor,springRegexpAdvisor,introductionAdvisor"
+          p:proxyTargetClass="true"
+          p:target-ref="forumServiceImpl"/>
+
+</beans>
