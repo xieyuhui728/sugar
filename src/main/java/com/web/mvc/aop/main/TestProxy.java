@@ -75,6 +75,13 @@ public class TestProxy {
         springAdvisorProxy.bar();
         System.out.println("------------------基于IOC的springAop切面测试-end--------------------");
 
+        System.out.println("------------------基于IOC的springAop生成代理测试-begin--------------------");
+        //使用时直接获取目标bean，该目标bean已经被spring自动代理
+        ForumServiceImpl forumServiceImpl = (ForumServiceImpl) applicationContext.getBean("forumServiceImpl");
+        forumServiceImpl.foo();
+        forumServiceImpl.bar();
+        System.out.println("------------------基于IOC的springAop生成代理测试-begin--------------------");
+
 
     }
 }

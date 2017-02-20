@@ -59,4 +59,11 @@
           p:proxyTargetClass="true"
           p:target-ref="forumServiceImpl"/>
 
+    <!--以上配置都是通过spring的ProxyFactoryBean工程类创建代理，每一个需要被代理的bean都需要一个ProxyFactoryBean，比较繁琐-->
+    <!--通过spring提供的自动创建代理类来实现自动生产代理-->
+    <bean class="org.springframework.aop.framework.autoproxy.BeanNameAutoProxyCreator"
+          p:beanNames="forumServiceImpl"
+          p:optimize="true"
+          p:interceptorNames="springAfterAdvice"/>
+
 </beans>
