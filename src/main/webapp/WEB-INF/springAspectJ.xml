@@ -1,0 +1,25 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop-3.0.xsd">
+
+    <!--springAop.xml都是通过ioc注入spring实现的特定类来生成增强，切点，切面以及代理类的。使用起来相对复杂。
+    spring2.0后推出的基于jdk注解(集成了AspectJ注解)方式来使得aop更加易用-->
+
+    <!--基于@AspectJ切面的驱动器:通过aop命名空间的<aop:aspectj-autoproxy/>自动为spring容器中那些匹配@AspectJ切面的Bean创建代理,
+    完成切面织入.内部采用AnnotationAwareAspectJAutoProxyCreator进行自动代理的创建，具体实现细节已经被隐藏起来了-->
+    <aop:aspectj-autoproxy proxy-target-class="false"/>
+    <!--目标类-->
+    <bean id="forumServiceImpl" class="com.web.mvc.aop.ForumServiceImpl"/>
+    <bean class="com.web.mvc.aop.springAop.annotation.SpringAspectAnnotation"/>
+
+    <!--aspectJ配置，通过AnnotationAwareAspectJAutoProxyCreator自动将@AspectJ注解的切面自动织入到目标类中
+    <bean class="org.springframework.aop.aspectj.annotation.AnnotationAwareAspectJAutoProxyCreator"
+          p:optimize="true"/>-->
+
+
+</beans>
