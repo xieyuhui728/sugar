@@ -85,22 +85,6 @@ public class TestProxy {
         forumServiceImpl.bar();
         System.out.println("------------------基于IOC的springAop生成代理测试-begin--------------------");
 
-        System.out.println("------------------基于AspectJ注解的springAop测试-begin--------------------");
-        AspectJProxyFactory aspectJProxyFactory = new AspectJProxyFactory();
-        aspectJProxyFactory.setTarget(target);
-        aspectJProxyFactory.addAspect(SpringAspectAnnotation.class);
-        ForumService aspectJProxy = aspectJProxyFactory.getProxy();
-        aspectJProxy.foo();
-        aspectJProxy.bar();
-
-        //自动创建代理测试
-        String filePath2="E:\\dev\\workspace\\sugar\\src\\main\\webapp\\WEB-INF\\springAspectJ.xml";
-        ApplicationContext applicationContext2 = new FileSystemXmlApplicationContext(filePath2);
-        ForumService aspectJProxyForumService = (ForumService) applicationContext2.getBean("forumServiceImpl");
-        aspectJProxyForumService.foo();
-        aspectJProxyForumService.bar();
-        System.out.println("------------------基于AspectJ注解的springAop测试-end--------------------");
-
 
     }
 }
