@@ -1,9 +1,10 @@
 package com.web.mvc.aop.springAop.annotation;
 
-import com.web.mvc.aop.ForumServiceImpl;
-import com.web.mvc.aop.monitor.Monitorable;
-import com.web.mvc.aop.springAop.SpringIntroductionAdvice;
-import org.aspectj.lang.annotation.*;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.After;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Before;
 
 /**
  * Created by xieyuhui on 2017/2/21.
@@ -19,9 +20,14 @@ public class SpringAspectAnnotation {
      * 除了返回类型模式、方法名模式和参数模式外，其它项都是可选的
      * execution表达式详解：http://blog.csdn.net/lk7688535/article/details/51989746#t0
      */
-    @Before("execution(* *(..))")
-    public void beforeAdvice() {
+    @Before("execution(* *(..))&& args(name,num,..)")
+    public void beforeAdvice(int num ,String name) {
         System.out.println("基于aspectJ注解得前置增强。");
+        /**
+         * 通过args绑定目标类方法的入参
+         */
+        System.out.println("----name:"+name);
+        System.out.println("----num:"+num);
     }
 
     //这里的切点 使用切点命名方式
@@ -30,4 +36,15 @@ public class SpringAspectAnnotation {
         System.out.println("基于aspectJ注解得后置增强。");
     }
 
+    /**
+     *  任何增强方法都可以通过将第一个入参声明为JoinPoint访问到目标类连接点上下文的信息
+     * @param joinPoint
+     * @throws Throwable
+     */
+    @Around("com.web.mvc.aop.springAop.pointcut.TestNamePointcut.inClass()")
+    public void aroundAdvice(ProceedingJoinPoint joinPoint) throws Throwable{
+        System.out.println("基于aspectJ注解得环绕增强--前置。");
+        joinPoint.proceed();
+        System.out.println("基于aspectJ注解得环绕增强--后置。");
+    }
 }

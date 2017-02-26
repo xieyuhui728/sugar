@@ -27,6 +27,7 @@ public class Test {
         ForumService aspectJProxyForumService = (ForumService) applicationContext2.getBean("forumServiceImpl");
         aspectJProxyForumService.foo();
         aspectJProxyForumService.bar();
+        aspectJProxyForumService.arg("jay",10);
         System.out.println("------------------基于AspectJ注解的springAop测试-end--------------------");
     }
 }

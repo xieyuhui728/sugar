@@ -6,4 +6,6 @@ package com.web.mvc.aop;
 public interface ForumService {
     void foo();
     void bar();
+
+    void arg(String name,int num);
 }

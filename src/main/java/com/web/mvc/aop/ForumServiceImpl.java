@@ -24,4 +24,8 @@ public class ForumServiceImpl implements ForumService {
             e.printStackTrace();
         }*/
     }
+
+    @Override
+    public void arg(String name, int num) {
+    }
 }
