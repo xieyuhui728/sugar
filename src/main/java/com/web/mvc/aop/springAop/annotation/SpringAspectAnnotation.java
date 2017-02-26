@@ -8,6 +8,7 @@ import org.aspectj.lang.annotation.Before;
 
 /**
  * Created by xieyuhui on 2017/2/21.
+ * 基于AspectJ注解的方式配置切面
  * SpringAspectAnnotation 相当于spring的advice,pointcut,advisor三者联合表达的信息
  */
 
