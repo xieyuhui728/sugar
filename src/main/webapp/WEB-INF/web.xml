@@ -7,7 +7,7 @@
 	<!-- ContextLoaderListener需要加载的spring配合文件 -->
 	<context-param>
 		<param-name>contextConfigLocation</param-name>
-		<param-value>/WEB-INF/applicaitonContext-servlet.xml,/WEB-INF/springAop.xml</param-value>
+		<param-value>/WEB-INF/applicaitonContext-servlet.xml</param-value>
 	</context-param>
 
 	<!--ContextLoaderListener随web容器启动,并完成IOC容器的定位,加载,注册-->
@@ -24,7 +24,7 @@
 
 	<servlet-mapping>
 		<servlet-name>applicaitonContext</servlet-name>
-		<url-pattern>*.html</url-pattern>
+		<url-pattern>*.html</url-pattern>s
 	</servlet-mapping>
 
 	<filter>
