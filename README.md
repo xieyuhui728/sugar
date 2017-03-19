@@ -1,1 +1,9 @@
-# sugar基础框架 springmvc
+# sugar
+base framework :springmvc
+
+orm:mybatis
+
+splider:jsoup
+
+cache:redis
+
