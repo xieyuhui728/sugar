@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="war" name="sugar:war">
+    <output-path>$PROJECT_DIR$/target</output-path>
+    <root id="archive" name="redis.war">
+      <element id="artifact" artifact-name="sugar:war exploded" />
+    </root>
+  </artifact>
+</component>
