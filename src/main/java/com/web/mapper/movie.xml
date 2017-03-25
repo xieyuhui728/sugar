@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.web.mvc.admin.dao.MovieDao">
+
+    <sql id="movie_rows">
+        <![CDATA[
+        t.id AS id,
+        t.c_name AS cName,
+        t.e_name AS eName,
+        t.o_name AS oName,
+        t.introduce AS introduce,
+        t.order AS  order
+        ]]>
+    </sql>
+
+    <select id="selectAll" resultType="com.web.mvc.admin.model.Movie">
+      SELECT <include refid="movie_rows"/> FROM movie t ORDER BY t.order ASC
+    </select>
+</mapper>
