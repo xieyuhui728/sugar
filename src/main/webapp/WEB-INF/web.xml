@@ -24,7 +24,7 @@
 
 	<servlet-mapping>
 		<servlet-name>applicaitonContext</servlet-name>
-		<url-pattern>*.html</url-pattern>s
+		<url-pattern>*.html</url-pattern>
 	</servlet-mapping>
 
 	<filter>
