@@ -47,43 +47,43 @@ public class TestProxy {
         System.out.println("-----------------基于springAop测试-end--------------------");
 
         //---------基于spring配置文件的测试-------------------
-        String filePath = "E:\\dev\\workspace\\sugar\\src\\main\\webapp\\WEB-INF\\springAop.xml";
-
-        System.out.println("-----------------基于IOC的springAop测试-begin--------------------");
-        ApplicationContext applicationContext = new FileSystemXmlApplicationContext(filePath);
-        ForumServiceImpl springProxy = (ForumServiceImpl) applicationContext.getBean("springProxy");
-        springProxy.foo();
-        springProxy.bar();
-        System.out.println("-----------------基于IOC的springAop测试-end--------------------");
-
-        System.out.println("-----------------基于IOC的springAop（引介增强）测试-begin--------------------");
-        ForumServiceImpl springIntroductionProxy = (ForumServiceImpl) applicationContext.getBean("springIntroductionProxy");
-        springIntroductionProxy.foo();
-        springIntroductionProxy.bar();
-
-        //开启性能监控开关
-        Monitorable monitorable = (Monitorable) springIntroductionProxy;
-        monitorable.setMonitorActive(true);
-        springIntroductionProxy.foo();
-        springIntroductionProxy.bar();
-        System.out.println("------------------基于IOC的springAop（引介增强）测试-end--------------------");
-
-        System.out.println("------------------基于IOC的springAop切面测试-begin--------------------");
-        ForumServiceImpl springAdvisorProxy = (ForumServiceImpl) applicationContext.getBean("springAdvisorProxy");
-        springAdvisorProxy.foo();
-        springAdvisorProxy.bar();
-        Monitorable monitorableAdvisor = (Monitorable) springAdvisorProxy;
-        monitorableAdvisor.setMonitorActive(true);
-        springAdvisorProxy.foo();
-        springAdvisorProxy.bar();
-        System.out.println("------------------基于IOC的springAop切面测试-end--------------------");
-
-        System.out.println("------------------基于IOC的springAop生成代理测试-begin--------------------");
-        //使用时直接获取目标bean，调用目标类方法时会被spring自动生成的代理类拦截
-        ForumServiceImpl forumServiceImpl = (ForumServiceImpl) applicationContext.getBean("forumServiceImpl");
-        forumServiceImpl.foo();
-        forumServiceImpl.bar();
-        System.out.println("------------------基于IOC的springAop生成代理测试-begin--------------------");
+//        String filePath = "";
+//
+//        System.out.println("-----------------基于IOC的springAop测试-begin--------------------");
+//        ApplicationContext applicationContext = new FileSystemXmlApplicationContext(filePath);
+//        ForumServiceImpl springProxy = (ForumServiceImpl) applicationContext.getBean("springProxy");
+//        springProxy.foo();
+//        springProxy.bar();
+//        System.out.println("-----------------基于IOC的springAop测试-end--------------------");
+//
+//        System.out.println("-----------------基于IOC的springAop（引介增强）测试-begin--------------------");
+//        ForumServiceImpl springIntroductionProxy = (ForumServiceImpl) applicationContext.getBean("springIntroductionProxy");
+//        springIntroductionProxy.foo();
+//        springIntroductionProxy.bar();
+//
+//        //开启性能监控开关
+//        Monitorable monitorable = (Monitorable) springIntroductionProxy;
+//        monitorable.setMonitorActive(true);
+//        springIntroductionProxy.foo();
+//        springIntroductionProxy.bar();
+//        System.out.println("------------------基于IOC的springAop（引介增强）测试-end--------------------");
+//
+//        System.out.println("------------------基于IOC的springAop切面测试-begin--------------------");
+//        ForumServiceImpl springAdvisorProxy = (ForumServiceImpl) applicationContext.getBean("springAdvisorProxy");
+//        springAdvisorProxy.foo();
+//        springAdvisorProxy.bar();
+//        Monitorable monitorableAdvisor = (Monitorable) springAdvisorProxy;
+//        monitorableAdvisor.setMonitorActive(true);
+//        springAdvisorProxy.foo();
+//        springAdvisorProxy.bar();
+//        System.out.println("------------------基于IOC的springAop切面测试-end--------------------");
+//
+//        System.out.println("------------------基于IOC的springAop生成代理测试-begin--------------------");
+//        //使用时直接获取目标bean，调用目标类方法时会被spring自动生成的代理类拦截
+//        ForumServiceImpl forumServiceImpl = (ForumServiceImpl) applicationContext.getBean("forumServiceImpl");
+//        forumServiceImpl.foo();
+//        forumServiceImpl.bar();
+//        System.out.println("------------------基于IOC的springAop生成代理测试-begin--------------------");
 
 
     }
