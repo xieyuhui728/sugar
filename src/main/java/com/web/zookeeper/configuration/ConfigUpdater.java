@@ -8,10 +8,10 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Created by xieyuhui on 2018/7/2.
- * 随机时刻 更新配置
+ * 更新配置
  */
 public class ConfigUpdater {
-    private static final String PATH = "/config";
+    public static final String PATH = "/config";
     private ActiveKeyValueStore store;
     private Random random = new Random();
 
