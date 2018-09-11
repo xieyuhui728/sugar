@@ -1,5 +1,6 @@
 package com.web.mvc.controller;
 
+import com.sun.istack.internal.NotNull;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -21,7 +22,6 @@ import org.springframework.web.bind.annotation.SessionAttributes;
  */
 @SessionAttributes("xxx")
 public class RootController {
-
 
     /**
      * 请求handle1是，SpringMVC通过@ModelAttribute将请求入参添加到模型中。
