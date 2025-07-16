@@ -1,186 +1,192 @@
-/**
- * 明细查询SQL模板
- */
-private static final String DETAIL_QUERY_TEMPLATE = """
-        WITH first_designs AS (
+    /**
+     * 明细查询SQL模板
+     */
+    private static final String DETAIL_QUERY_TEMPLATE = """
+            WITH first_designs AS (
+                SELECT
+                    gc.code AS case_code,
+                    gc.created as case_created_time,
+                    gd.order_code,
+                    MIN(gd.id) AS first_design_id,
+                    MIN(gd.send_out) AS first_design_send_time
+                FROM gms_case gc
+                LEFT JOIN gms_design gd ON gc.code = gd.case_code
+                WHERE gd.send_out IS NOT NULL
+                    AND gd.status IN ('SENT','CONFIRMED','MODIFICATION','NOT_MODIFICATION')
+                    AND (gd.send_out >= :startTime)
+                    AND (gd.send_out <= :endTime)
+                GROUP BY gc.code, gc.created, gd.order_code
+            ),
+            last_completed_tasks AS (
+                SELECT 
+                    fd.case_code,
+                    fd.case_created_time,
+                    fd.first_design_send_time,
+                    fd.order_code,
+                    gt.code AS task_code,
+                    gt.assignee_id as designer_id,
+                    go2.team_id,
+                    go2.tags as order_tags,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY fd.case_code 
+                        ORDER BY go2.finished DESC
+                    ) AS rn
+                FROM first_designs fd
+                JOIN gms_order go2 ON go2.code = fd.order_code
+                JOIN gms_task gt ON gt.process_instance_id = go2.active_process_instance_id 
+                JOIN gms_task_type gtt ON gt.type_id = gtt.id
+                WHERE gt.status = 'COMPLETED'
+                    AND gtt.id IN (29, 31, 35)
+                    AND gt.finished < fd.first_design_send_time
+            ),
+                    call_metrics AS (
+                SELECT
+                    lct.case_code,
+                    lct.case_created_time,
+                    lct.first_design_send_time,
+                    lct.order_code,
+                    lct.task_code,
+                    lct.designer_id,
+                    lct.team_id,
+                    lct.order_tags,
+                    -- 设计前通话统计
+                    COUNT(CASE WHEN tocl.begin_time < lct.first_design_send_time THEN tocl.id END) AS pre_called_num,
+                    COUNT(CASE WHEN tocl.begin_time < lct.first_design_send_time AND tocl.status = '接通' THEN tocl.id END) AS pre_connected_call_num,
+                    SUM(
+                        CASE
+                            WHEN tocl.begin_time < lct.first_design_send_time AND tocl.status = '接通' AND tocl.duration IS NOT NULL 
+                            THEN 
+                                (
+                                    COALESCE(SUBSTRING_INDEX(tocl.duration, ':', 1), 0) * 3600 +
+                                    COALESCE(SUBSTRING_INDEX(SUBSTRING_INDEX(tocl.duration, ':', 2), ':', -1), 0) * 60 +
+                                    COALESCE(SUBSTRING_INDEX(tocl.duration, ':', -1), 0)
+                                )
+                            ELSE 0
+                        END
+                    ) AS pre_total_duration_sec,
+                    -- 设计后通话统计
+                    COUNT(CASE WHEN tocl.begin_time >= lct.first_design_send_time THEN tocl.id END) AS post_called_num,
+                    COUNT(CASE WHEN tocl.begin_time >= lct.first_design_send_time AND tocl.status = '接通' THEN tocl.id END) AS post_connected_call_num,
+                    SUM(
+                        CASE
+                            WHEN tocl.begin_time >= lct.first_design_send_time AND tocl.status = '接通' AND tocl.duration IS NOT NULL 
+                            THEN
+                                (
+                                    COALESCE(SUBSTRING_INDEX(tocl.duration, ':', 1), 0) * 3600 +
+                                    COALESCE(SUBSTRING_INDEX(SUBSTRING_INDEX(tocl.duration, ':', 2), ':', -1), 0) * 60 +
+                                    COALESCE(SUBSTRING_INDEX(tocl.duration, ':', -1), 0)
+                                )
+                            ELSE 0
+                        END
+                    ) AS post_total_duration_sec
+                FROM last_completed_tasks lct
+                LEFT JOIN tt_order_call_log tocl ON lct.task_code = tocl.order_no
+                WHERE lct.rn = 1
+                GROUP BY lct.case_code, lct.case_created_time, lct.first_design_send_time, lct.order_code, lct.task_code, lct.designer_id, lct.team_id, lct.order_tags
+            )
             SELECT
-                gc.code AS case_code,
-                gc.created as case_created_time,
-                MIN(gd.id) AS first_design_id,
-                MIN(gd.send_out) AS first_design_send_time
-            FROM gms_case gc
-            LEFT JOIN gms_design gd ON gc.code = gd.case_code
-            WHERE gd.send_out IS NOT NULL
-                AND gd.status IN ('SENT','CONFIRMED','MODIFICATION','NOT_MODIFICATION')
-                AND (gd.send_out >= :startTime)
-                AND (gd.send_out <= :endTime)
-            GROUP BY gc.code, gc.created
-        ),
-        last_completed_tasks AS (
-            SELECT 
-                fd.case_code,
-                fd.case_created_time,
-                fd.first_design_send_time,
-                gt.code AS task_code,
-                gt.assignee_id as designer_id,
-                go2.team_id,
-                go2.tags as order_tags,
-                ROW_NUMBER() OVER (
-                    PARTITION BY fd.case_code 
-                    ORDER BY go2.finished DESC
-                ) AS rn
-            FROM first_designs fd
-            JOIN gms_order_case_stakeholder_detail gocrd ON fd.case_code = gocrd.case_code
-            JOIN gms_order go2 ON go2.id = gocrd.order_id
-            JOIN gms_task gt ON gt.process_instance_id = go2.active_process_instance_id 
-            JOIN gms_task_type gtt ON gt.type_id = gtt.id
-            WHERE gt.status = 'COMPLETED'
-                AND gtt.id IN (29, 31, 35)
-                AND gt.finished < fd.first_design_send_time
-        ),
-        call_metrics AS (
-            SELECT
-                lct.case_code,
-                lct.case_created_time,
-                lct.first_design_send_time,
-                lct.task_code,
-                lct.designer_id,
-                lct.team_id,
-                lct.order_tags,
-                -- 设计前通话统计
-                COUNT(CASE WHEN tocl.begin_time < lct.first_design_send_time THEN tocl.id END) AS pre_called_num,
-                COUNT(CASE WHEN tocl.begin_time < lct.first_design_send_time AND tocl.status = '接通' THEN tocl.id END) AS pre_connected_call_num,
-                SUM(
-                    CASE
-                        WHEN tocl.begin_time < lct.first_design_send_time AND tocl.status = '接通' AND tocl.duration IS NOT NULL 
-                        THEN 
-                            (
-                                COALESCE(SUBSTRING_INDEX(tocl.duration, ':', 1), 0) * 3600 +
-                                COALESCE(SUBSTRING_INDEX(SUBSTRING_INDEX(tocl.duration, ':', 2), ':', -1), 0) * 60 +
-                                COALESCE(SUBSTRING_INDEX(tocl.duration, ':', -1), 0)
-                            )
-                        ELSE 0
-                    END
+                cm.case_code,
+                COALESCE(gt.name, '未分组') AS team_name,
+                COALESCE(gu.name, '未知') AS user_name,
+                COALESCE(gd.name, '未知') AS dentist_name,
+                gocsd.dentist_code,
+                COALESCE(gh.name, '未知') AS hospital_name,
+                COALESCE(gp.name, '未知') AS patient_name,
+                gocsd.patient_code,
+                DATE_FORMAT(cm.case_created_time, '%Y-%m-%d %H:%i:%s') AS case_created_time,
+                DATE_FORMAT(cm.first_design_send_time, '%Y-%m-%d %H:%i:%s') AS first_design_send_time,
+                cm.task_code,
+                CASE WHEN cm.order_tags LIKE '%ORDER_TAG-PRE_DESIGN_COMMUNICATION%' THEN '是' ELSE '否' END AS is_pre_communication,
+                COALESCE(cm.pre_called_num, 0) AS pre_called_num,
+                COALESCE(cm.pre_connected_call_num, 0) AS pre_connected_call_num,
+                CONCAT(
+                    LPAD(FLOOR(COALESCE(cm.pre_total_duration_sec, 0) / 3600), 2, '0'), ':',
+                    LPAD(FLOOR((COALESCE(cm.pre_total_duration_sec, 0) % 3600) / 60), 2, '0'), ':',
+                    LPAD(COALESCE(cm.pre_total_duration_sec, 0) % 60, 2, '0')
                 ) AS pre_total_duration_sec,
-                -- 设计后通话统计
-                COUNT(CASE WHEN tocl.begin_time >= lct.first_design_send_time THEN tocl.id END) AS post_called_num,
-                COUNT(CASE WHEN tocl.begin_time >= lct.first_design_send_time AND tocl.status = '接通' THEN tocl.id END) AS post_connected_call_num,
-                SUM(
-                    CASE
-                        WHEN tocl.begin_time >= lct.first_design_send_time AND tocl.status = '接通' AND tocl.duration IS NOT NULL 
-                        THEN
-                            (
-                                COALESCE(SUBSTRING_INDEX(tocl.duration, ':', 1), 0) * 3600 +
-                                COALESCE(SUBSTRING_INDEX(SUBSTRING_INDEX(tocl.duration, ':', 2), ':', -1), 0) * 60 +
-                                COALESCE(SUBSTRING_INDEX(tocl.duration, ':', -1), 0)
-                            )
-                        ELSE 0
-                    END
+                CASE WHEN cm.order_tags LIKE '%ORDER_TAG-POST_DESIGN_COMMUNICATION%' THEN '是' ELSE '否' END AS is_post_communication,
+                COALESCE(cm.post_called_num, 0) AS post_called_num,
+                COALESCE(cm.post_connected_call_num, 0) AS post_connected_call_num,
+                CONCAT(
+                    LPAD(FLOOR(COALESCE(cm.post_total_duration_sec, 0) / 3600), 2, '0'), ':',
+                    LPAD(FLOOR((COALESCE(cm.post_total_duration_sec, 0) % 3600) / 60), 2, '0'), ':',
+                    LPAD(COALESCE(cm.post_total_duration_sec, 0) % 60, 2, '0')
                 ) AS post_total_duration_sec
-            FROM last_completed_tasks lct
-            LEFT JOIN tt_order_call_log tocl ON lct.task_code = tocl.order_no
-            WHERE lct.rn = 1
-            GROUP BY lct.case_code, lct.case_created_time, lct.first_design_send_time, lct.task_code, lct.designer_id, lct.team_id, lct.order_tags
-        )
-        SELECT
-            cm.case_code,
-            COALESCE(gt.name, '未分组') AS team_name,
-            COALESCE(gu.name, '未知') AS user_name,
-            COALESCE(gd.name, '未知') AS dentist_name,
-            gocsd.dentist_code,
-            COALESCE(gh.name, '未知') AS hospital_name,
-            COALESCE(gp.name, '未知') AS patient_name,
-            gocsd.patient_code,
-            DATE_FORMAT(cm.case_created_time, '%Y-%m-%d %H:%i:%s') AS case_created_time,
-            DATE_FORMAT(cm.first_design_send_time, '%Y-%m-%d %H:%i:%s') AS first_design_send_time,
-            cm.task_code,
-            CASE WHEN cm.order_tags LIKE '%ORDER_TAG-PRE_DESIGN_COMMUNICATION%' THEN '是' ELSE '否' END AS is_pre_communication,
-            COALESCE(cm.pre_called_num, 0) AS pre_called_num,
-            COALESCE(cm.pre_connected_call_num, 0) AS pre_connected_call_num,
-            CONCAT(
-                LPAD(FLOOR(COALESCE(cm.pre_total_duration_sec, 0) / 3600), 2, '0'), ':',
-                LPAD(FLOOR((COALESCE(cm.pre_total_duration_sec, 0) % 3600) / 60), 2, '0'), ':',
-                LPAD(COALESCE(cm.pre_total_duration_sec, 0) % 60, 2, '0')
-            ) AS pre_total_duration_sec,
-            CASE WHEN cm.order_tags LIKE '%ORDER_TAG-POST_DESIGN_COMMUNICATION%' THEN '是' ELSE '否' END AS is_post_communication,
-            COALESCE(cm.post_called_num, 0) AS post_called_num,
-            COALESCE(cm.post_connected_call_num, 0) AS post_connected_call_num,
-            CONCAT(
-                LPAD(FLOOR(COALESCE(cm.post_total_duration_sec, 0) / 3600), 2, '0'), ':',
-                LPAD(FLOOR((COALESCE(cm.post_total_duration_sec, 0) % 3600) / 60), 2, '0'), ':',
-                LPAD(COALESCE(cm.post_total_duration_sec, 0) % 60, 2, '0')
-            ) AS post_total_duration_sec
-        FROM call_metrics cm
-        LEFT JOIN gms_order_case_stakeholder_detail gocsd ON cm.case_code = gocsd.case_code
-        LEFT JOIN gms_team gt ON cm.team_id = gt.id
-        LEFT JOIN gms_user gu ON cm.designer_id = gu.id
-        LEFT JOIN gms_dentist gd ON gocsd.dentist_code = gd.code
-        LEFT JOIN gms_hospital gh ON gocsd.hospital_code = gh.code
-        LEFT JOIN gms_patient gp ON gocsd.patient_code = gp.code
-        WHERE 1 = 1
+            FROM call_metrics cm
+            LEFT JOIN gms_order go_for_stakeholder ON go_for_stakeholder.code = cm.order_code
+            LEFT JOIN gms_order_case_stakeholder_detail gocsd ON gocsd.order_id = go_for_stakeholder.id
+            LEFT JOIN gms_team gt ON cm.team_id = gt.id
+            LEFT JOIN gms_user gu ON cm.designer_id = gu.id
+            LEFT JOIN gms_dentist gd ON gocsd.dentist_code = gd.code
+            LEFT JOIN gms_hospital gh ON gocsd.hospital_code = gh.code
+            LEFT JOIN gms_patient gp ON gocsd.patient_code = gp.code
+            WHERE 1 = 1
         """;
 
-/**
- * 明细查询计数SQL
- */
-private static final String DETAIL_COUNT_QUERY = """
-        WITH first_designs AS (
-            SELECT
-                gc.code AS case_code,
-                gc.created as case_created_time,
-                MIN(gd.id) AS first_design_id,
-                MIN(gd.send_out) AS first_design_send_time
-            FROM gms_case gc
-            LEFT JOIN gms_design gd ON gc.code = gd.case_code
-            WHERE gd.send_out IS NOT NULL
-                AND gd.status IN ('SENT','CONFIRMED','MODIFICATION','NOT_MODIFICATION')
-                AND (gd.send_out >= :startTime)
-                AND (gd.send_out <= :endTime)
-            GROUP BY gc.code, gc.created
-        ),
-        last_completed_tasks AS (
-            SELECT 
-                fd.case_code,
-                fd.case_created_time,
-                fd.first_design_send_time,
-                gt.code AS task_code,
-                gt.assignee_id as designer_id,
-                go2.team_id,
-                go2.tags as order_tags,
-                ROW_NUMBER() OVER (
-                    PARTITION BY fd.case_code 
-                    ORDER BY go2.finished DESC
-                ) AS rn
-            FROM first_designs fd
-            JOIN gms_order_case_stakeholder_detail gocrd ON fd.case_code = gocrd.case_code
-            JOIN gms_order go2 ON go2.id = gocrd.order_id
-            JOIN gms_task gt ON gt.process_instance_id = go2.active_process_instance_id 
-            JOIN gms_task_type gtt ON gt.type_id = gtt.id
-            WHERE gt.status = 'COMPLETED'
-                AND gtt.id IN (29, 31, 35)
-                AND gt.finished < fd.first_design_send_time
-        ),
-        call_metrics AS (
-            SELECT
-                lct.case_code,
-                lct.case_created_time,
-                lct.first_design_send_time,
-                lct.task_code,
-                lct.designer_id,
-                lct.team_id,
-                lct.order_tags
-            FROM last_completed_tasks lct
-            WHERE lct.rn = 1
-        )
-        SELECT COUNT(DISTINCT cm.case_code)
-        FROM call_metrics cm
-        LEFT JOIN gms_order_case_stakeholder_detail gocsd ON cm.case_code = gocsd.case_code
-        LEFT JOIN gms_team gt ON cm.team_id = gt.id
-        LEFT JOIN gms_user gu ON cm.designer_id = gu.id
-        LEFT JOIN gms_dentist gd ON gocsd.dentist_code = gd.code
-        LEFT JOIN gms_hospital gh ON gocsd.hospital_code = gh.code
-        LEFT JOIN gms_patient gp ON gocsd.patient_code = gp.code
-        WHERE 1 = 1
+    /**
+     * 明细查询计数SQL
+     */
+    private static final String DETAIL_COUNT_QUERY = """
+            WITH first_designs AS (
+                SELECT
+                    gc.code AS case_code,
+                    gc.created as case_created_time,
+                    gd.order_code,
+                    MIN(gd.id) AS first_design_id,
+                    MIN(gd.send_out) AS first_design_send_time
+                FROM gms_case gc
+                LEFT JOIN gms_design gd ON gc.code = gd.case_code
+                WHERE gd.send_out IS NOT NULL
+                    AND gd.status IN ('SENT','CONFIRMED','MODIFICATION','NOT_MODIFICATION')
+                    AND (gd.send_out >= :startTime)
+                    AND (gd.send_out <= :endTime)
+                GROUP BY gc.code, gc.created, gd.order_code
+            ),
+            last_completed_tasks AS (
+                SELECT 
+                    fd.case_code,
+                    fd.case_created_time,
+                    fd.first_design_send_time,
+                    fd.order_code,
+                    gt.code AS task_code,
+                    gt.assignee_id as designer_id,
+                    go2.team_id,
+                    go2.tags as order_tags,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY fd.case_code 
+                        ORDER BY go2.finished DESC
+                    ) AS rn
+                FROM first_designs fd
+                JOIN gms_order go2 ON go2.code = fd.order_code
+                JOIN gms_task gt ON gt.process_instance_id = go2.active_process_instance_id 
+                JOIN gms_task_type gtt ON gt.type_id = gtt.id
+                WHERE gt.status = 'COMPLETED'
+                    AND gtt.id IN (29, 31, 35)
+                    AND gt.finished < fd.first_design_send_time
+            ),
+            call_metrics AS (
+                SELECT
+                    lct.case_code,
+                    lct.case_created_time,
+                    lct.first_design_send_time,
+                    lct.order_code,
+                    lct.task_code,
+                    lct.designer_id,
+                    lct.team_id,
+                    lct.order_tags
+                FROM last_completed_tasks lct
+                WHERE lct.rn = 1
+            )
+            SELECT COUNT(DISTINCT cm.case_code)
+            FROM call_metrics cm
+            LEFT JOIN gms_order go_for_stakeholder ON go_for_stakeholder.code = cm.order_code
+            LEFT JOIN gms_order_case_stakeholder_detail gocsd ON gocsd.order_id = go_for_stakeholder.id
+            LEFT JOIN gms_team gt ON cm.team_id = gt.id
+            LEFT JOIN gms_user gu ON cm.designer_id = gu.id
+            LEFT JOIN gms_dentist gd ON gocsd.dentist_code = gd.code
+            LEFT JOIN gms_hospital gh ON gocsd.hospital_code = gh.code
+            LEFT JOIN gms_patient gp ON gocsd.patient_code = gp.code
+            WHERE 1 = 1
         """;
 
 @Override
