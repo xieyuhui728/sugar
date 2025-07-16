@@ -2,22 +2,7 @@
      * 明细查询SQL模板
      */
     private static final String DETAIL_QUERY_TEMPLATE = """
-            WITH ExpandedOrders AS (
-              SELECT 
-                id AS order_id,
-                'pre' AS design_type
-              FROM gms_order 
-              WHERE tags LIKE '%ORDER_TAG-PRE_DESIGN_COMMUNICATION%'
-              
-              UNION ALL 
-              
-              SELECT 
-                id AS order_id,
-                'post' AS design_type
-              FROM gms_order 
-              WHERE tags LIKE '%ORDER_TAG-POST_DESIGN_COMMUNICATION%'
-            ),
-            first_designs AS (
+            WITH first_designs AS (
                 SELECT
                     gc.code AS case_code,
                     gc.created as case_created_time,
@@ -26,13 +11,10 @@
                     MIN(gd.send_out) AS first_design_send_time
                 FROM gms_case gc
                 LEFT JOIN gms_design gd ON gc.code = gd.case_code
-                LEFT JOIN gms_order go_filter ON go_filter.code = gd.order_code
-                LEFT JOIN ExpandedOrders eo ON eo.order_id = go_filter.id
                 WHERE gd.send_out IS NOT NULL
                     AND gd.status IN ('SENT','CONFIRMED','MODIFICATION','NOT_MODIFICATION')
                     AND (gd.send_out >= :startTime)
                     AND (gd.send_out <= :endTime)
-                    AND eo.order_id IS NOT NULL
                 GROUP BY gc.code, gc.created, gd.order_code
             ),
             last_completed_tasks AS (
@@ -141,43 +123,25 @@
             WHERE 1 = 1
         """;
 
-         /**
-      * 明细查询计数SQL
-      */
-     private static final String DETAIL_COUNT_QUERY = """
-             WITH ExpandedOrders AS (
-               SELECT 
-                 id AS order_id,
-                 'pre' AS design_type
-               FROM gms_order 
-               WHERE tags LIKE '%ORDER_TAG-PRE_DESIGN_COMMUNICATION%'
-               
-               UNION ALL 
-               
-               SELECT 
-                 id AS order_id,
-                 'post' AS design_type
-               FROM gms_order 
-               WHERE tags LIKE '%ORDER_TAG-POST_DESIGN_COMMUNICATION%'
-             ),
-             first_designs AS (
-                 SELECT
-                     gc.code AS case_code,
-                     gc.created as case_created_time,
-                     gd.order_code,
-                     MIN(gd.id) AS first_design_id,
-                     MIN(gd.send_out) AS first_design_send_time
-                 FROM gms_case gc
-                 LEFT JOIN gms_design gd ON gc.code = gd.case_code
-                 LEFT JOIN gms_order go_filter ON go_filter.code = gd.order_code
-                 LEFT JOIN ExpandedOrders eo ON eo.order_id = go_filter.id
-                 WHERE gd.send_out IS NOT NULL
-                     AND gd.status IN ('SENT','CONFIRMED','MODIFICATION','NOT_MODIFICATION')
-                     AND (gd.send_out >= :startTime)
-                     AND (gd.send_out <= :endTime)
-                     AND eo.order_id IS NOT NULL
-                 GROUP BY gc.code, gc.created, gd.order_code
-             ),
+             /**
+     * 明细查询计数SQL
+     */
+    private static final String DETAIL_COUNT_QUERY = """
+            WITH first_designs AS (
+                SELECT
+                    gc.code AS case_code,
+                    gc.created as case_created_time,
+                    gd.order_code,
+                    MIN(gd.id) AS first_design_id,
+                    MIN(gd.send_out) AS first_design_send_time
+                FROM gms_case gc
+                LEFT JOIN gms_design gd ON gc.code = gd.case_code
+                WHERE gd.send_out IS NOT NULL
+                    AND gd.status IN ('SENT','CONFIRMED','MODIFICATION','NOT_MODIFICATION')
+                    AND (gd.send_out >= :startTime)
+                    AND (gd.send_out <= :endTime)
+                GROUP BY gc.code, gc.created, gd.order_code
+            ),
             last_completed_tasks AS (
                 SELECT 
                     fd.case_code,
